@@ -10,13 +10,17 @@ def get_numerice_cols(
 def make_lags(
     df,
     features,
-    lags:list):
+    lags:list,
+    drop=False):
     
     for c in features:
         for i in lags:
             df = pd.concat(
                 [df, df[c].shift(i).rename(c+'_lag_{}'.format(i))],
                 axis=1)   
+        
+        if drop:
+            df= df.drop(c, axis=1)
             
     return df             
             
@@ -27,7 +31,7 @@ def label_shift(
 ):
     
     df = pd.concat([df, df[y_col].shift(-shift_len).rename('label')] ,axis=1)
-    df = df.drop(label, axis=1)
+    df = df.drop(y_col, axis=1)
     return df
     
 
@@ -36,6 +40,10 @@ def train_test_split(
     label,
     test_size = 0.2
 ):
+    '''
+    this is pyjin vesion train_test_split function, diffrerent from scikit-learn etc.
+    
+    '''
     
     len_df=len(df)
     test_idx = int(len_df * test_size)
@@ -47,3 +55,52 @@ def train_test_split(
     X_test, y_test = df_test.loc[:, df.columns.difference([label])], df_test[label]    
 
     return df_train, df_test, X_train, X_test, y_train, y_test
+
+
+def resample_weekly_mean(
+    df, 
+    datetimecol = 'ds',
+    weekend=False
+    ):
+    
+    df['dayofweek'] = pd.to_datetime(df[datetimecol]).dt.dayofweek
+    
+    if not weekend:
+        temp =  df[
+            (df['dayofweek'] != 5) &
+            (df['dayofweek'] != 6)
+        ]
+
+    grouped = temp.groupby(pd.Grouper(key=datetimecol, freq='W'))
+    temp = grouped['yhat'].mean().rename('yhat_mean').to_frame()
+    temp['y_mean'] = grouped['y'].mean()
+    # temp['dayofweek']= temp.index.dayofweek    
+    
+    return temp
+
+def add_window_stats_column(
+    df : pd.DataFrame, 
+    col: str, 
+    list_window_lag : list):
+
+    '''
+    window size lag 
+    '''
+
+    temp = df.copy()    
+
+    for window_size, lag in list_window_lag:        
+        
+        temp = temp[col].rolling(window=window_size, min_periods=0)
+
+        col_name_mean = f'{col}_rolling_mean_{window_size}'
+        col_name_std = f'{col}_rolling_std_{window_size}'
+
+        rolling_mean_temp = temp.mean().shift(lag).rename(f'{col}_rolling_mean_{window_size}')
+        rolling_std_temp = temp.std().shift(lag).rename(f'{col}_rolling_std_{window_size}')
+
+        df = pd.concat([df, rolling_mean_temp, rolling_std_temp], axis=1) 
+    
+    df = df.dropna()
+    
+    return df
