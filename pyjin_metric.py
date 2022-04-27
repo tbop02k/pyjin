@@ -92,20 +92,20 @@ def action_loss_RMSSE(
 def action_loss_MAPE(
     true: np.array, 
     pred: np.array,
-    gap=1,
+    n_future=1,
     auto_weighting=False
 ):    
     
     list_action_loss = [0]
     list_true_pred_inc = [0]
     
-    for i in range(len(true)-gap):               
+    for i in range(len(true)-n_future):               
         
         if true[i] == 0:
             continue
         
-        true_inc = ((true[i+gap] - true[i]) / true[i])
-        true_pred_inc = ((pred[i+gap] - true[i]) / true[i])
+        true_inc = ((true[i+n_future] - true[i]) / true[i])
+        true_pred_inc = ((pred[i+n_future] - true[i]) / true[i])
         
         prediction_truth = true_inc * true_pred_inc        
         
@@ -139,7 +139,7 @@ def action_loss_MAPE(
 def action_loss_MAPE2(
     true: np.array, 
     pred: np.array,
-    gap=1,
+    n_future=1,
 ):    
     '''
     This metric consider inverstment based MAPE.
@@ -150,12 +150,12 @@ def action_loss_MAPE2(
     
     list_action_loss = [0]    
     
-    for i in range(len(true)-gap):                       
+    for i in range(len(true)-n_future):                       
         if true[i] == 0:
             continue
         
-        true_inc = ((true[i+gap] - true[i]) / true[i])
-        true_pred_inc = ((pred[i+gap] - true[i]) / true[i])
+        true_inc = ((true[i+n_future] - true[i]) / true[i])
+        true_pred_inc = ((pred[i+n_future] - true[i]) / true[i])
         
         percentage_diff = np.abs(true_pred_inc - true_inc)
         
@@ -174,23 +174,21 @@ def DTW(true, pred):
     return dtw.dtw(true, pred).distance
 
 ## This is generation part 
-def persist_generation(true, 
-                       window=0, 
-                       gap=1):
+def persist_generation(true,                                                     
+                       n_future=1,
+                       train_true = None):
     '''
-    window = increasement past n period
-    gap = n step forward prediction  
-    
-    ex) window = 0, gap = 1 : prediction at t+1 value is value at t
+    makes prediction values using true value
+    pred(t) = true(t-n)
     '''
     
-    pred = []
+    len_true = len(true)
+    all_true = np.concatenate((train_true ,true))
+    pred = all_true[-len_true-n_future: -n_future]
     
-    for i in range(len(true) - window - gap):
-        pred.append(true[i+window] + (true[i+window] - true[i]))
-        
-    return true[window+gap:], np.array(pred)
-
+    return true, pred
+    
+    
 '''
 you can get all metric values using this function
 '''
@@ -200,49 +198,59 @@ def all_metric(
     true : np.array, 
     pred : np.array, 
     train_true : Union[None, np.array] = None, 
-    gap=1):
+    n_future=1):
     
     res = {}
+
+    if train_true is None:
+        print('For persistig metric, Front part of prediction can be missing as train_true data was not inserted')
+        print('If you want precise persistance time series metric, please insert train_true data')
     
     if train_true is not None:
         res['RMSSE'] = RMSSE(true, pred, train_true)
-        res['persist_RMSSE'] = RMSSE(*persist_generation(true, window=0, gap=gap), train_true)
+        res['persist_RMSSE'] = RMSSE(*persist_generation(true,  n_future=n_future, train_true=train_true), train_true)
         res['persist_norm_RMSSE'] = res['RMSSE'] / res['persist_RMSSE']
         
         
         res['MASE'] = MASE(true, pred, train_true)
-        res['persist_MASE'] = MASE(*persist_generation(true, window=0, gap=gap), train_true)
+        res['persist_MASE'] = MASE(*persist_generation(true, n_future=n_future, train_true=train_true), train_true)
         res['persist_norm_MASE'] = res['MASE'] / res['persist_MASE']
             
+
+    true , persist_pred = persist_generation(true,  n_future=n_future, train_true=train_true)
+
     res['Jin_RMSSE'] = Jin_RMSSE(true, pred)
         
     res['MAPE'] = MAPE(true, pred)
-    res['persist_MAPE'] = MAPE(*persist_generation(true, window=0, gap=gap))
+    res['persist_MAPE'] = MAPE( true , persist_pred)
     res['persist_norm_MAPE'] = res['MAPE'] / res['persist_MAPE']
     
     res['dtw'] = DTW(true, pred)
+    res['persist_dtw'] = DTW( true , persist_pred)
+    res['persist_norm'] = res['dtw'] / res['persist_dtw']
         
     res['Mdape'] = Mdape(true, pred)
-    res['persist_Mdape'] = Mdape(*persist_generation(true, window=0, gap=gap))
+    res['persist_Mdape'] = Mdape(true , persist_pred)
+    res['persist_Mdape_norm'] = res['Mdape'] / res['persist_Mdape']
     
     res['SMAPE'] = SMAPE(true, pred)
-    res['persist_SMAPE'] = SMAPE(*persist_generation(true))
+    res['persist_SMAPE'] = SMAPE( true , persist_pred)
     res['persist_norm_SMAPE'] = res['SMAPE']/res['persist_SMAPE']
     
     res['action_loss_RMSSE'] = action_loss_RMSSE(true, pred)        
     res['action_loss_RMSSE_autoWeighted'] = action_loss_RMSSE(true, pred, auto_weighting=True)        
     
-    res['action_loss_MAPE'] = action_loss_MAPE(true, pred, gap=gap)
-    res['persist_action_loss_MAPE'] = action_loss_MAPE(*persist_generation(true, window=0, gap=gap),gap=gap)    
+    res['action_loss_MAPE'] = action_loss_MAPE(true, pred, n_future=n_future)
+    res['persist_action_loss_MAPE'] = action_loss_MAPE( true , persist_pred, n_future=n_future)    
+        
+    res['action_loss_MAPE_autoweighted'] = action_loss_MAPE(true, pred, n_future=n_future, auto_weighting=True)
+    res['persist_action_loss_MAPE_autoweighted'] = action_loss_MAPE(true , persist_pred, n_future=n_future, auto_weighting=True)    
     
-    res['action_loss_MAPE_autoweighted'] = action_loss_MAPE(true, pred, gap=gap, auto_weighting=True)
-    res['persist_action_loss_MAPE_autoweighted'] = action_loss_MAPE(*persist_generation(true, window=0, gap=gap), gap=gap)    
-    
-    res['action_loss_MAPE2'] = action_loss_MAPE2(true, pred, gap=gap)
-    res['persist_action_loss_MAPE2'] = action_loss_MAPE2(*persist_generation(true, window=0, gap=gap))
+    res['action_loss_MAPE2'] = action_loss_MAPE2(true, pred, n_future=n_future)
+    res['persist_action_loss_MAPE2'] = action_loss_MAPE2(true , persist_pred, n_future=n_future)
     
     return res
 
 if __name__ =='__main__':
-    print(persist_generation(np.array([1,2,3,4,8,10]), window=2, gap=2))
+    print(persist_generation(np.array([1,2,3,4,8,10]), n_future=2))
 
