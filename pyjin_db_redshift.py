@@ -1,9 +1,12 @@
 import pandas as pd
 import numpy as np
 from pandas.io.sql import _wrap_result
-from common.util.df import reduce_mem_usage
-# import psycopg2
 import redshift_connector      
+
+try:
+    from common.util.df import reduce_mem_usage
+except:
+    pass
 
 '''
 ver1.0
@@ -40,7 +43,12 @@ def conn_exec_close(connectInfo, query, output=None, is_return=True, **kwargs):
                         return cursor.fetchall(), columns
                     elif output=='df':
                         df_res = pd.DataFrame(cursor.fetchall(), columns=columns)
-                        # df_res = reduce_mem_usage(df_res)
+                        
+                        try:
+                            df_res = reduce_mem_usage(df_res)                        
+                        except:
+                            pass
+                        
                         return df_res
                 else:
                     return True
