@@ -232,12 +232,11 @@ def all_metric(
     res['persist_MAPE'] = MAPE( true , persist_pred)
     res['persist_norm_MAPE'] = res['MAPE'] / res['persist_MAPE']    
 
-    res['dtw'] = DTW(true, pred)
-    res['persist_dtw'] = DTW( true , persist_pred)
-    res['persist_norm'] = res['dtw'] / res['persist_dtw']
-
     if dtw_flag is True:
         res['dtw'] = DTW(true, pred)
+        res['persist_dtw'] = DTW( true , persist_pred)
+        res['persist_norm'] = res['dtw'] / res['persist_dtw']
+
         
     res['Mdape'] = Mdape(true, pred)
     res['persist_Mdape'] = Mdape(true , persist_pred)
