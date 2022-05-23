@@ -78,29 +78,15 @@ def resample_weekly_mean(
     
     return temp
 
-def add_window_stats_column(
+def make_window_stats_column(
     df : pd.DataFrame, 
-    col: str, 
-    list_window_lag : list):
-
-    '''
-    window size lag 
-    '''
-
-    temp = df.copy()    
-
-    for window_size, lag in list_window_lag:        
+    col: str,
+    window_size: int,
+    lag=1
+    ):
         
-        temp = temp[col].rolling(window=window_size, min_periods=0)
+    temp = df[col].rolling(window=window_size)
+    rolling_mean_temp = temp.mean().shift(lag).rename(f'{col}_rolling_mean_{window_size}')
+    rolling_std_temp = temp.std().shift(lag).rename(f'{col}_rolling_std_{window_size}')
 
-        col_name_mean = f'{col}_rolling_mean_{window_size}'
-        col_name_std = f'{col}_rolling_std_{window_size}'
-
-        rolling_mean_temp = temp.mean().shift(lag).rename(f'{col}_rolling_mean_{window_size}')
-        rolling_std_temp = temp.std().shift(lag).rename(f'{col}_rolling_std_{window_size}')
-
-        df = pd.concat([df, rolling_mean_temp, rolling_std_temp], axis=1) 
-    
-    df = df.dropna()
-    
-    return df
+    return rolling_mean_temp, rolling_std_temp

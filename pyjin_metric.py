@@ -1,6 +1,13 @@
-import dtw
-import numpy as np
 from typing import Union
+import numpy as np
+
+try:
+    import dtw
+    dtw_flag = True
+except:
+    dtw_flag = False
+    print('failed to import dtw')
+    print('try : pip install dtw-python')
 
 def MASE(true, pred, train_true):    
     n = train_true.shape[0]
@@ -223,11 +230,14 @@ def all_metric(
         
     res['MAPE'] = MAPE(true, pred)
     res['persist_MAPE'] = MAPE( true , persist_pred)
-    res['persist_norm_MAPE'] = res['MAPE'] / res['persist_MAPE']
-    
+    res['persist_norm_MAPE'] = res['MAPE'] / res['persist_MAPE']    
+
     res['dtw'] = DTW(true, pred)
     res['persist_dtw'] = DTW( true , persist_pred)
     res['persist_norm'] = res['dtw'] / res['persist_dtw']
+
+    if dtw_flag is True:
+        res['dtw'] = DTW(true, pred)
         
     res['Mdape'] = Mdape(true, pred)
     res['persist_Mdape'] = Mdape(true , persist_pred)
