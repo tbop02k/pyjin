@@ -9,23 +9,19 @@ except:
     print('failed to import dtw')
     print('try : pip install dtw-python')
 
-def MASE(true, pred, train_true):    
+def MASE(true, pred, train_true):
     n = train_true.shape[0]
     d = np.abs(np.diff(train_true)).sum()/(n-1)
     
     errors = np.abs(true - pred)
     return errors.mean()/d
 
-def Mdape(true, pred):    
-    nonzero_idx = np.where(true!=0)[0]
-    
-    if np.count_nonzero(nonzero_idx) >0:
-        print('Mdape caulcated omitting zero')        
-    
+def Mdape(true, pred):
+    nonzero_idx = true != 0      
     ape = (true[nonzero_idx] -pred[nonzero_idx])/ true[nonzero_idx]
     return np.median(np.abs(ape))
 
-def RMSSE(true, pred, train_true):    
+def RMSSE(true, pred, train_true):
     '''
     true: np.array 
     pred: np.array
@@ -46,12 +42,9 @@ def Jin_RMSSE(true, pred):
     
     return RMSSE(true, pred, true)
 
-def MAPE(true, pred):        
-    nonzero_idx = true != 0    
-        
-    if np.count_nonzero(nonzero_idx) >0:
-        print('MAPE caulcated omitting zero')      
-          
+def MAPE(true, pred): 
+    nonzero_idx = true != 0  
+    
     ape = (true[nonzero_idx] -pred[nonzero_idx])/ true[nonzero_idx]
     
     return np.mean(np.abs(ape))
@@ -205,13 +198,20 @@ def all_metric(
     true : np.array, 
     pred : np.array, 
     train_true : Union[None, np.array] = None, 
-    n_future=1):
+    n_future=1,
+    warning=False):
     
     res = {}
-
+    
+    nonzero_idx = true != 0  
+    if np.count_nonzero(nonzero_idx) >0:        
+        if warning:
+            print('MAPE, Mdape caulcated omitting zero')   
+    
     if train_true is None:
-        print('For persistig metric, Front part of prediction can be missing as train_true data was not inserted')
-        print('If you want precise persistance time series metric, please insert train_true data')
+        if warning:
+            print('For persistig metric, Front part of prediction can be missing as train_true data was not inserted')
+            print('If you want precise persistance time series metric, please insert train_true data')
     
     if train_true is not None:
         res['RMSSE'] = RMSSE(true, pred, train_true)
