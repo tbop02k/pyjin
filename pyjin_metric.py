@@ -1,3 +1,4 @@
+from this import d
 from typing import Union
 import numpy as np
 
@@ -157,16 +158,14 @@ def action_loss_MAPE2(
         true_inc = ((true[i+n_future] - true[i]) / true[i])
         true_pred_inc = ((pred[i+n_future] - true[i]) / true[i])
         
-        percentage_diff = np.abs(true_pred_inc - true_inc)
-        
+        percentage_diff = np.abs(true_pred_inc - true_inc)        
         list_action_loss.append(percentage_diff)
     
     return np.mean(list_action_loss)
 
 
 def DTW(true, pred):
-    target_idx = np.where(true!=0)
-    
+    target_idx = np.where(true!=0)    
     
     true = true[target_idx]
     pred = pred[target_idx]
@@ -181,18 +180,17 @@ def persist_generation(true,
     makes prediction values using true value
     pred(t) = true(t-n)
     '''
-    
+        
     len_true = len(true)
     all_true = np.concatenate((train_true ,true))
     pred = all_true[-len_true-n_future: -n_future]
-    
+        
     return true, pred
     
     
 '''
 you can get all metric values using this function
 '''
-
 
 def all_metric(
     true : np.array, 
@@ -206,57 +204,66 @@ def all_metric(
     nonzero_idx = true != 0  
     if np.count_nonzero(nonzero_idx) >0:        
         if warning:
-            print('MAPE, Mdape caulcated omitting zero')   
+            print('MAPE, Mdape caulcated omitting zero') 
+
     
-    if train_true is None:
+
+    res['MAPE'] = MAPE(true, pred)
+    res['Mdape'] = Mdape(true, pred)
+    res['SMAPE'] = SMAPE(true, pred)
+    res['action_loss_RMSSE'] = action_loss_RMSSE(true, pred)        
+    res['action_loss_MAPE'] = action_loss_MAPE(true, pred, n_future=n_future)
+    res['action_loss_RMSSE_autoWeighted'] = action_loss_RMSSE(true, pred, auto_weighting=True)        
+    
+    res['action_loss_MAPE2'] = action_loss_MAPE2(true, pred, n_future=n_future)
+    res['action_loss_MAPE_autoweighted'] = action_loss_MAPE(true, pred, n_future=n_future, auto_weighting=True)
+    
+    
+    if train_true is not None:
+        true , persist_pred = persist_generation(true,  n_future=n_future, train_true=train_true)
+
+
+        res['RMSSE'] = RMSSE(true, pred, train_true)
+        res['persist_RMSSE'] = RMSSE(true, persist_pred, train_true)
+        res['persist_norm_RMSSE'] = res['RMSSE'] / res['persist_RMSSE']        
+        
+        res['MASE'] = MASE(true, pred, train_true)
+        res['persist_MASE'] = MASE(true, persist_pred, train_true)
+        res['persist_norm_MASE'] = res['MASE'] / res['persist_MASE']
+
+        res['Jin_RMSSE'] = Jin_RMSSE(true, pred)        
+
+        res['persist_MAPE'] = MAPE(true , persist_pred)
+        res['persist_MAPE_norm'] = res['MAPE'] / res['persist_MAPE']
+        
+        if dtw_flag is True:
+            res['dtw'] = DTW(true, pred)
+            if train_true is not None:
+                res['persist_dtw'] = DTW( true , persist_pred)
+                res['persist_norm'] = res['dtw'] / res['persist_dtw']
+        
+        res['persist_Mdape'] = Mdape(true , persist_pred)
+        res['persist_Mdape_norm'] = res['Mdape'] / res['persist_Mdape']
+        
+        
+        res['persist_SMAPE'] = SMAPE( true , persist_pred)
+        res['persist_norm_SMAPE'] = res['SMAPE']/res['persist_SMAPE']
+            
+        res['persist_action_loss_MAPE'] = action_loss_MAPE( true , persist_pred, n_future=n_future)    
+        
+        res['persist_action_loss_MAPE_autoweighted'] = action_loss_MAPE(true , persist_pred, n_future=n_future, auto_weighting=True)    
+        
+        res['persist_action_loss_MAPE2'] = action_loss_MAPE2(true , persist_pred, n_future=n_future)
+
+    else:
         if warning:
             print('For persistig metric, Front part of prediction can be missing as train_true data was not inserted')
             print('If you want precise persistance time series metric, please insert train_true data')
-    
-    if train_true is not None:
-        res['RMSSE'] = RMSSE(true, pred, train_true)
-        res['persist_RMSSE'] = RMSSE(*persist_generation(true,  n_future=n_future, train_true=train_true), train_true)
-        res['persist_norm_RMSSE'] = res['RMSSE'] / res['persist_RMSSE']
-        
-        
-        res['MASE'] = MASE(true, pred, train_true)
-        res['persist_MASE'] = MASE(*persist_generation(true, n_future=n_future, train_true=train_true), train_true)
-        res['persist_norm_MASE'] = res['MASE'] / res['persist_MASE']
-            
 
-    true , persist_pred = persist_generation(true,  n_future=n_future, train_true=train_true)
 
-    res['Jin_RMSSE'] = Jin_RMSSE(true, pred)
-        
-    res['MAPE'] = MAPE(true, pred)
-    res['persist_MAPE'] = MAPE( true , persist_pred)
-    res['persist_norm_MAPE'] = res['MAPE'] / res['persist_MAPE']    
-
-    if dtw_flag is True:
-        res['dtw'] = DTW(true, pred)
-        res['persist_dtw'] = DTW( true , persist_pred)
-        res['persist_norm'] = res['dtw'] / res['persist_dtw']
-
-        
-    res['Mdape'] = Mdape(true, pred)
-    res['persist_Mdape'] = Mdape(true , persist_pred)
-    res['persist_Mdape_norm'] = res['Mdape'] / res['persist_Mdape']
     
-    res['SMAPE'] = SMAPE(true, pred)
-    res['persist_SMAPE'] = SMAPE( true , persist_pred)
-    res['persist_norm_SMAPE'] = res['SMAPE']/res['persist_SMAPE']
     
-    res['action_loss_RMSSE'] = action_loss_RMSSE(true, pred)        
-    res['action_loss_RMSSE_autoWeighted'] = action_loss_RMSSE(true, pred, auto_weighting=True)        
     
-    res['action_loss_MAPE'] = action_loss_MAPE(true, pred, n_future=n_future)
-    res['persist_action_loss_MAPE'] = action_loss_MAPE( true , persist_pred, n_future=n_future)    
-        
-    res['action_loss_MAPE_autoweighted'] = action_loss_MAPE(true, pred, n_future=n_future, auto_weighting=True)
-    res['persist_action_loss_MAPE_autoweighted'] = action_loss_MAPE(true , persist_pred, n_future=n_future, auto_weighting=True)    
-    
-    res['action_loss_MAPE2'] = action_loss_MAPE2(true, pred, n_future=n_future)
-    res['persist_action_loss_MAPE2'] = action_loss_MAPE2(true , persist_pred, n_future=n_future)
     
     return res
 
