@@ -86,8 +86,8 @@ def make_window_stats_column(
     ):
         
     temp = df[col].rolling(window=window_size)
-    rolling_mean_temp = temp.mean().shift(lag).rename(f'{col}_rolling_mean_{window_size}')
-    rolling_std_temp = temp.std().shift(lag).rename(f'{col}_rolling_std_{window_size}')
+    rolling_mean_temp = temp.mean().shift(lag).rename(f'{col}_rolling_mean_{window_size:03}')
+    rolling_std_temp = temp.std().shift(lag).rename(f'{col}_rolling_std_{window_size:03}')
 
     return rolling_mean_temp, rolling_std_temp
 
